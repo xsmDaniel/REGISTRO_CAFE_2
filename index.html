@@ -1,95 +1,68 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema de Tickets - Café</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Tickets</title>
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body {
-      font-family: 'Raleway', sans-serif;
-      background-color: #f4f1ee;
-      color: #4b3b2a;
-    }
-    .navbar {
-      background-color: #6f4e37;
-    }
-    .navbar-brand, .nav-link, .btn {
-      color: #fff !important;
-    }
-    .card {
-      border: none;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-      background-color: #fff;
-      border-radius: 12px;
-      padding: 1rem;
-    }
-    .btn-primary {
-      background-color: #8b5e3c;
-      border: none;
-    }
-    .btn-primary:hover {
-      background-color: #704a2a;
-    }
-    .btn-outline-secondary {
-      border-color: #8b5e3c;
-      color: #8b5e3c;
-    }
-    .btn-outline-secondary:hover {
-      background-color: #8b5e3c;
-      color: #fff;
-    }
-    .priority-high { color: #d9534f; }
-    .priority-medium { color: #f0ad4e; }
-    .priority-low { color: #5cb85c; }
-    footer {
-      text-align: center;
-      padding: 20px;
-      font-size: 0.9rem;
-      color: #8c7661;
-    }
-    canvas {
-      background-color: #fff;
-      border-radius: 8px;
-      padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
+    body { padding: 20px; }
+    .ticket-card { margin-bottom: 1rem; }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#"><i class="fas fa-mug-hot me-2"></i>Café Tickets</a>
-    </div>
-  </nav>
-
-  <main class="container my-5">
-    <h1 class="mb-4">Bienvenido al Sistema de Tickets ☕</h1>
-
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
-      <button class="btn btn-primary" id="crearTicketBtn"><i class="fas fa-plus me-2"></i>Crear Ticket</button>
-      <button class="btn btn-outline-secondary" id="exportarCsvBtn"><i class="fas fa-file-csv me-2"></i>Exportar CSV</button>
+  <div class="container">
+    <div id="auth-section">
+      <h2>Login / Registro</h2>
+      <input type="email" id="email" class="form-control" placeholder="Email"><br>
+      <input type="password" id="password" class="form-control" placeholder="Contraseña"><br>
+      <button class="btn btn-primary" onclick="login()">Iniciar Sesión</button>
+      <button class="btn btn-secondary" onclick="register()">Registrarse</button>
+      <button class="btn btn-link" onclick="recoverPassword()">¿Olvidaste tu contraseña?</button>
     </div>
 
-    <canvas id="graficoPrioridades" height="100"></canvas>
+    <div id="main-section" style="display:none;">
+      <h2>Bienvenido, <span id="user-email"></span></h2>
+      <button class="btn btn-success" onclick="logout()">Cerrar sesión</button>
+      <hr>
+      <button class="btn btn-primary" onclick="showTicketForm()">Crear Ticket</button>
+      <button class="btn btn-warning" onclick="exportCSV()">Exportar CSV</button>
 
-    <div class="row mt-4" id="listaTickets">
-      <!-- Aquí se cargan los tickets -->
+      <canvas id="chartPrioridades" width="400" height="200"></canvas>
+      <hr>
+
+      <div id="ticket-form" style="display:none;">
+        <h4>Nuevo Ticket</h4>
+        <input type="text" id="titulo" class="form-control" placeholder="Título"><br>
+        <textarea id="descripcion" class="form-control" placeholder="Descripción"></textarea><br>
+        <select id="prioridad" class="form-control">
+          <option value="alta">Alta</option>
+          <option value="media">Media</option>
+          <option value="baja">Baja</option>
+        </select><br>
+        <input type="text" id="tipo" class="form-control" placeholder="Tipo de Pedido"><br>
+        <button class="btn btn-primary" onclick="crearTicket()">Guardar</button>
+      </div>
+
+      <h4 class="mt-4">Lista de Tickets</h4>
+      <div id="tickets-container"></div>
     </div>
-  </main>
+  </div>
 
-  <footer>
-    Sistema de Tickets para gestión de pedidos de café | México 2025
-  </footer>
-
-  <!-- Firebase -->
+  <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-    import { Chart } from 'https://cdn.jsdelivr.net/npm/chart.js';
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCDx496WCv2ChVDacIkaA_xg70Hhpr-FpI",
@@ -104,13 +77,138 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Aquí iría el código de lógica de autenticación, carga de tickets, gráficos y exportación CSV/PDF
+    window.register = async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        Swal.fire('Registrado correctamente');
+      } catch (error) {
+        Swal.fire('Error', error.message, 'error');
+      }
+    };
 
+    window.login = async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        Swal.fire('Error', error.message, 'error');
+      }
+    };
+
+    window.logout = async () => {
+      await signOut(auth);
+    };
+
+    window.recoverPassword = async () => {
+      const email = document.getElementById("email").value;
+      try {
+        await sendPasswordResetEmail(auth, email);
+        Swal.fire('Revisa tu correo para recuperar la contraseña');
+      } catch (error) {
+        Swal.fire('Error', error.message, 'error');
+      }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById("auth-section").style.display = 'none';
+        document.getElementById("main-section").style.display = 'block';
+        document.getElementById("user-email").innerText = user.email;
+        cargarTickets();
+      } else {
+        document.getElementById("auth-section").style.display = 'block';
+        document.getElementById("main-section").style.display = 'none';
+      }
+    });
+
+    window.showTicketForm = () => {
+      document.getElementById("ticket-form").style.display = 'block';
+    };
+
+    window.crearTicket = async () => {
+      const titulo = document.getElementById("titulo").value;
+      const descripcion = document.getElementById("descripcion").value;
+      const prioridad = document.getElementById("prioridad").value;
+      const tipo = document.getElementById("tipo").value;
+      const folio = 'F' + Date.now();
+      const fecha = Timestamp.now();
+
+      try {
+        await addDoc(collection(db, "tickets"), { titulo, descripcion, prioridad, tipo, folio, fecha });
+        Swal.fire('Ticket creado con éxito');
+        cargarTickets();
+      } catch (error) {
+        Swal.fire('Error', error.message, 'error');
+      }
+    };
+
+    window.cargarTickets = async () => {
+      const querySnapshot = await getDocs(collection(db, "tickets"));
+      const contenedor = document.getElementById("tickets-container");
+      contenedor.innerHTML = '';
+      const conteo = { alta: 0, media: 0, baja: 0 };
+
+      querySnapshot.forEach((doc) => {
+        const t = doc.data();
+        conteo[t.prioridad]++;
+        const div = document.createElement("div");
+        div.className = 'card ticket-card';
+        div.innerHTML = `
+          <div class="card-body">
+            <h5 class="card-title">${t.titulo} - ${t.folio}</h5>
+            <p class="card-text">${t.descripcion}</p>
+            <p><strong>Prioridad:</strong> ${t.prioridad} | <strong>Tipo:</strong> ${t.tipo}</p>
+            <button class="btn btn-outline-danger btn-sm" onclick="generarPDF('${t.folio}', '${t.titulo}', '${t.descripcion}', '${t.prioridad}', '${t.tipo}')">Exportar PDF</button>
+          </div>
+        `;
+        contenedor.appendChild(div);
+      });
+      generarGrafica(conteo);
+    };
+
+    window.generarGrafica = (conteo) => {
+      new Chart(document.getElementById("chartPrioridades"), {
+        type: 'bar',
+        data: {
+          labels: ['Alta', 'Media', 'Baja'],
+          datasets: [{
+            label: 'Prioridades',
+            data: [conteo.alta, conteo.media, conteo.baja],
+            backgroundColor: ['#dc3545', '#ffc107', '#198754']
+          }]
+        }
+      });
+    };
+
+    window.exportCSV = async () => {
+      const querySnapshot = await getDocs(collection(db, "tickets"));
+      let csv = 'Folio,Título,Descripción,Prioridad,Tipo\n';
+      querySnapshot.forEach((doc) => {
+        const t = doc.data();
+        csv += `${t.folio},${t.titulo},${t.descripcion},${t.prioridad},${t.tipo}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tickets.csv';
+      a.click();
+    };
+
+    window.generarPDF = (folio, titulo, descripcion, prioridad, tipo) => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text(`Folio: ${folio}`, 10, 10);
+      doc.text(`Título: ${titulo}`, 10, 20);
+      doc.text(`Descripción: ${descripcion}`, 10, 30);
+      doc.text(`Prioridad: ${prioridad}`, 10, 40);
+      doc.text(`Tipo: ${tipo}`, 10, 50);
+      doc.save(`ticket_${folio}.pdf`);
+    };
   </script>
-
-  <!-- Librerías -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
+
